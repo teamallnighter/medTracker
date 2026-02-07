@@ -96,12 +96,62 @@ fi
 cd "$PROJECT_DIR"
 
 echo -e "${GREEN}📋 Step 5: Creating Python virtual environment${NC}"
-python3 -m venv venv
+echo "🐍 Creating virtual environment..."
+python3 -m venv venv --clear
+
+# Verify venv was created successfully
+if [ ! -f "venv/bin/python3" ]; then
+    echo -e "${RED}❌ Failed to create virtual environment${NC}"
+    echo "Trying alternative approach..."
+    
+    # Try with system-wide venv package
+    sudo apt install -y python3-venv
+    python3 -m venv venv --clear
+    
+    if [ ! -f "venv/bin/python3" ]; then
+        echo -e "${RED}❌ Virtual environment creation failed${NC}"
+        exit 1
+    fi
+fi
+
+echo "✅ Virtual environment created successfully"
 source venv/bin/activate
+
+# Verify activation worked
+if [ "$VIRTUAL_ENV" != "$PROJECT_DIR/venv" ]; then
+    echo -e "${YELLOW}⚠️  Virtual environment activation may have failed${NC}"
+    echo "VIRTUAL_ENV=$VIRTUAL_ENV"
+    echo "Expected: $PROJECT_DIR/venv"
+fi
 
 echo -e "${GREEN}📋 Step 6: Installing Python dependencies${NC}"
 pip install --upgrade pip
 pip install -r requirements.txt
+
+# Verify Flask installation
+echo "🧪 Verifying Flask installation..."
+python3 -c "import flask; print('✅ Flask version:', flask.__version__)" || {
+    echo -e "${RED}❌ Flask installation failed${NC}"
+    exit 1
+}
+
+# Test app.py imports
+echo "🧪 Testing app imports..."
+cd server
+python3 -c "
+import sys
+sys.path.insert(0, '.')
+try:
+    from app import app
+    print('✅ App imports successfully')
+except Exception as e:
+    print('❌ App import failed:', e)
+    sys.exit(1)
+" || {
+    echo -e "${RED}❌ App import test failed${NC}"
+    exit 1
+}
+cd ..
 
 echo -e "${GREEN}📋 Step 7: Generating secure tokens${NC}"
 # Generate secure authentication token
@@ -165,6 +215,18 @@ sudo cp scripts/medtracker.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable medtracker.service
 
+# Test the service configuration without full startup
+echo "🧪 Testing service configuration..."
+sudo systemd-analyze verify /etc/systemd/system/medtracker.service || {
+    echo -e "${YELLOW}⚠️  Service configuration issues detected${NC}"
+}
+
+# Show final service file for debugging
+echo "📋 Final service configuration:"
+echo "ExecStart path: $(grep ExecStart /etc/systemd/system/medtracker.service)"
+echo "Working directory: $(grep WorkingDirectory /etc/systemd/system/medtracker.service)"
+echo "User: $(grep "^User=" /etc/systemd/system/medtracker.service)"
+
 echo -e "${GREEN}📋 Step 10: Setting up static IP (optional)${NC}"
 read -p "Do you want to set up a static IP address? (y/N): " -n 1 -r
 echo
@@ -197,7 +259,22 @@ EOF
 fi
 
 echo -e "${GREEN}📋 Step 11: Testing installation${NC}"
-echo "Starting MedTracker service..."
+echo "🧪 Testing manual Flask startup..."
+
+# Test that Flask can start (briefly)
+timeout 10s python3 server/app.py 2>&1 | head -20 &
+FLASK_PID=$!
+sleep 3
+
+if ps -p $FLASK_PID > /dev/null 2>&1; then
+    echo "✅ Flask app starts successfully"
+    kill $FLASK_PID 2>/dev/null || true
+else
+    echo -e "${RED}❌ Flask app failed to start manually${NC}"
+    echo "Check for errors above. The service may also fail."
+fi
+
+echo "🚀 Starting MedTracker service..."
 sudo systemctl start medtracker.service
 sleep 5
 
