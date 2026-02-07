@@ -34,6 +34,12 @@ if ! grep -q "Raspberry Pi" /proc/cpuinfo 2>/dev/null; then
     fi
 fi
 
+# Get current user info
+CURRENT_USER=$(whoami)
+USER_HOME=$(eval echo ~$CURRENT_USER)
+echo -e "${BLUE}👤 Running as user: $CURRENT_USER${NC}"
+echo -e "${BLUE}🏠 Home directory: $USER_HOME${NC}"
+
 echo -e "${GREEN}📋 Step 1: Updating system packages${NC}"
 sudo apt update
 sudo apt upgrade -y
@@ -42,7 +48,8 @@ echo -e "${GREEN}📋 Step 2: Installing Python and system dependencies${NC}"
 sudo apt install -y python3 python3-pip python3-venv git sqlite3
 
 echo -e "${GREEN}📋 Step 3: Creating project directory${NC}"
-PROJECT_DIR="$HOME/medTracker"
+PROJECT_DIR="$USER_HOME/medTracker"
+echo "📁 Installing to: $PROJECT_DIR"
 if [ -d "$PROJECT_DIR" ]; then
     echo -e "${YELLOW}⚠️  MedTracker directory already exists${NC}"
     read -p "Remove existing installation? (y/N): " -n 1 -r
@@ -114,7 +121,9 @@ EOF
 rm .env_temp
 
 echo -e "${GREEN}📋 Step 9: Setting up systemd service${NC}"
-# Update service file with actual paths and tokens
+# Update service file with actual paths, user, and tokens
+sed -i "s|User=pi|User=$CURRENT_USER|g" scripts/medtracker.service
+sed -i "s|Group=pi|Group=$CURRENT_USER|g" scripts/medtracker.service
 sed -i "s|/home/pi/medTracker|$PROJECT_DIR|g" scripts/medtracker.service
 sed -i "s|your_secure_token_here|$AUTH_TOKEN|g" scripts/medtracker.service
 sed -i "s|your_vapid_private_key_here|$VAPID_PRIVATE_KEY|g" scripts/medtracker.service
@@ -196,6 +205,7 @@ echo "Start:   sudo systemctl start medtracker"
 echo "Stop:    sudo systemctl stop medtracker"
 echo "Restart: sudo systemctl restart medtracker"
 echo "Logs:    sudo journalctl -u medtracker -f"
+echo "Status:  sudo systemctl status medtracker"
 echo ""
 echo -e "${YELLOW}🔒 Security Note:${NC}"
 echo "Your authentication token and VAPID keys are saved in:"

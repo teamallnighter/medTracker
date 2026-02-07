@@ -39,6 +39,7 @@ cd medTracker
 ```
 
 2. **The setup script will:**
+   - Auto-detect your username and home directory
    - Install all dependencies
    - Generate secure authentication tokens  
    - Configure systemd service for auto-startup
@@ -112,7 +113,7 @@ http://192.168.1.100:8080/track?med_id=daily_pill&token=abc123xyz
 ## ⚙️ Configuration
 
 ### Environment Variables
-Set in `/home/pi/medTracker/.env`:
+Set in `~/medTracker/.env`:
 ```bash
 MEDTRACKER_TOKEN=your_secure_auth_token
 VAPID_PRIVATE_KEY=your_vapid_private_key  
@@ -197,7 +198,7 @@ sudo journalctl -u medtracker -n 50
 # Common issues:
 # - Missing Python dependencies: pip install -r requirements.txt  
 # - Port conflicts: Check if port 8080 is free
-# - Permission issues: Ensure pi user owns /home/pi/medTracker
+# - Permission issues: Ensure your user owns ~/medTracker
 ```
 
 ### NFC Not Working
@@ -212,7 +213,7 @@ sudo journalctl -u medtracker -n 50
 curl http://your-pi-ip:8080/health
 
 # Verify VAPID keys are set
-grep VAPID /home/pi/medTracker/.env
+grep VAPID ~/medTracker/.env
 
 # Browser must grant notification permission
 ```
