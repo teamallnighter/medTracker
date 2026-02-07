@@ -110,7 +110,7 @@ echo "Generated authentication token: $AUTH_TOKEN"
 
 # Generate VAPID keys for web push notifications
 echo "Generating VAPID keys for push notifications..."
-python3 -c "
+python3 << 'EOF' > .env_temp
 try:
     from pywebpush import generate_vapid_keys
     import json
@@ -121,13 +121,18 @@ try:
     # Save to file
     with open('vapid_keys.json', 'w') as f:
         json.dump(vapid, f, indent=2)
-    print('VAPID keys saved to vapid_keys.json')
+    print('# VAPID keys saved to vapid_keys.json')
 except ImportError:
-    print('pywebpush not available - using fallback keys')
+    print('# pywebpush not available - using fallback keys')
     import secrets
     print('VAPID_PRIVATE_KEY=' + secrets.token_urlsafe(32))
     print('VAPID_PUBLIC_KEY=' + secrets.token_urlsafe(32))
-" > .env_temp
+except Exception as e:
+    print('# Error generating VAPID keys - using fallback')  
+    import secrets
+    print('VAPID_PRIVATE_KEY=' + secrets.token_urlsafe(32))
+    print('VAPID_PUBLIC_KEY=' + secrets.token_urlsafe(32))
+EOF
 
 source .env_temp
 VAPID_PRIVATE_KEY=$(grep VAPID_PRIVATE_KEY .env_temp | cut -d'=' -f2)
