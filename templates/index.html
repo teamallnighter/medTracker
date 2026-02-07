@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>MedTracker - Medication Monitor</title>
+
+        <!-- Bootstrap CSS -->
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+
+        <!-- PWA Manifest -->
+        <link rel="manifest" href="/static/manifest.json">
+        <meta name="theme-color" content="#0d6efd">
+
+        <!-- Apple PWA -->
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="default">
+        <meta name="apple-mobile-web-app-title" content="MedTracker">
+
+        <style>
+            :root {
+                --primary-color: #0d6efd;
+                --success-color: #198754;
+                --warning-color: #ffc107;
+                --danger-color: #dc3545;
+            }
+
+            body {
+                background-color: #f8f9fa;
+                font-family: system-ui, -apple-system, sans-serif;
+            }
+
+            .status-card {
+                border-radius: 15px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                transition: transform 0.2s ease;
+            }
+
+            .status-card:hover {
+                transform: translateY(-2px);
+            }
+
+            .status-indicator {
+                width: 80px;
+                height: 80px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 2rem;
+                color: white;
+                margin: 0 auto 1rem;
+            }
+
+            .taken {
+                background-color: var(--success-color);
+            }
+            .missed {
+                background-color: var(--danger-color);
+            }
+            .pending {
+                background-color: var(--warning-color);
+            }
+
+            .quick-action {
+                border-radius: 50px;
+                padding: 15px 25px;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+
+            .history-grid {
+                display: grid;
+                grid-template-columns: repeat(7, 1fr);
+                gap: 5px;
+                margin: 1rem 0;
+            }
+
+            .history-day {
+                aspect-ratio: 1;
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 0.8rem;
+                font-weight: 600;
+                color: white;
+            }
+
+            .day-taken {
+                background-color: var(--success-color);
+            }
+            .day-missed {
+                background-color: var(--danger-color);
+            }
+            .day-future {
+                background-color: #e9ecef;
+                color: #6c757d;
+            }
+
+            .nfc-instruction {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border-radius: 15px;
+                padding: 20px;
+                text-align: center;
+            }
+
+            .stock-alert {
+                animation: pulse 2s infinite;
+            }
+
+            @keyframes pulse {
+                0% {
+                    transform: scale(1);
+                }
+                50% {
+                    transform: scale(1.05);
+                }
+                100% {
+                    transform: scale(1);
+                }
+            }
+
+            @media (max-width: 768px) {
+                .container {
+                    padding: 10px;
+                }
+
+                .status-indicator {
+                    width: 60px;
+                    height: 60px;
+                    font-size: 1.5rem;
+                }
+            }
+
+            .offline-indicator {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                background-color: var(--danger-color);
+                color: white;
+                text-align: center;
+                padding: 10px;
+                z-index: 1000;
+                transform: translateY(-100%);
+                transition: transform 0.3s ease;
+            }
+
+            .offline-indicator.show {
+                transform: translateY(0);
+            }
+        </style>
+    </head>
+    <body>
+        <!-- Offline Indicator -->
+        <div id="offline-indicator" class="offline-indicator">
+            <i class="bi bi-wifi-off"></i>
+            Connection Lost - Working Offline
+        </div>
+
+        <div class="container mt-4">
+            <!-- Header -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <h1 class="mb-0">
+                            <i class="bi bi-heart-pulse text-primary"></i>
+                            MedTracker
+                        </h1>
+                        <button class="btn btn-outline-primary" onclick="showSettings()">
+                            <i class="bi bi-gear"></i>
+                        </button>
+                    </div>
+                    <small class="text-muted">NFC Medication Monitor</small>
+                </div>
+            </div>
+
+            <!-- Today's Status -->
+            <div class="row mb-4">
+                <div class="col-md-6 mb-3">
+                    <div class="card status-card h-100">
+                        <div class="card-body text-center">
+                            <div id="status-indicator" class="status-indicator pending">
+                                <i class="bi bi-question-circle"></i>
+                            </div>
+                            <h5 id="status-title" class="card-title">Checking Status...</h5>
+                            <p id="status-subtitle" class="card-text text-muted">Loading medication info</p>
+                            <small id="last-taken" class="text-muted"></small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <div class="card status-card h-100">
+                        <div class="card-body">
+                            <h6 class="card-title">
+                                <i class="bi bi-box-seam"></i>
+                                Stock Level
+                            </h6>
+                            <div class="d-flex align-items-center">
+                                <div class="flex-grow-1">
+                                    <div id="stock-progress" class="progress mb-2" style="height: 10px;">
+                                        <div class="progress-bar" style="width: 0%"></div>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <small id="stock-current" class="text-muted">0 pills remaining</small>
+                                        <small id="stock-days" class="text-muted">0 days left</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="low-stock-alert" class="alert alert-warning mt-2 d-none stock-alert">
+                                <i class="bi bi-exclamation-triangle"></i>
+                                Low stock! Time to refill.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- NFC Instructions -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="nfc-instruction">
+                        <h6>
+                            <i class="bi bi-phone"></i>
+                            How to Track</h6>
+                        <p class="mb-2">Tap your phone on the NFC sticker on your medication bottle</p>
+                        <small>Or use the manual button below if NFC isn't working</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="row mb-4">
+                <div class="col-6">
+                    <button class="btn btn-success w-100 quick-action" onclick="manualTrack()">
+                        <i class="bi bi-check-circle"></i><br>
+                        <small>Manual Log</small>
+                    </button>
+                </div>
+                <div class="col-6">
+                    <button class="btn btn-primary w-100 quick-action" onclick="showHistory()">
+                        <i class="bi bi-calendar-week"></i><br>
+                        <small>View History</small>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">
+                                <i class="bi bi-clock-history"></i>
+                                Recent Activity
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div id="recent-activity" class="list-group list-group-flush">
+                                <div class="text-center text-muted">
+                                    Loading recent activity...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Modal -->
+        <div class="modal fade" id="settingsModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="bi bi-gear"></i>
+                            Settings
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="settings-form">
+                            <div class="mb-3">
+                                <label class="form-label">Medication Name</label>
+                                <input type="text" class="form-control" id="med-name" value="Daily Medication">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Dosage</label>
+                                <input type="text" class="form-control" id="med-dosage" value="1 pill">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Reminder Time</label>
+                                <input type="time" class="form-control" id="med-time" value="09:00">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Current Stock</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="med-stock" value="30" min="0">
+                                    <span class="input-group-text">pills</span>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Low Stock Alert</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="med-threshold" value="7" min="1">
+                                    <span class="input-group-text">pills</span>
+                                </div>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="notifications-enabled" checked="checked">
+                                <label class="form-check-label">
+                                    Enable Push Notifications
+                                </label>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" onclick="saveSettings()">Save Changes</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Modal -->
+        <div class="modal fade" id="historyModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="bi bi-calendar-week"></i>
+                            Medication History
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="history-content">
+                            <div class="text-center">
+                                <div class="spinner-border text-primary" role="status"></div>
+                                <p class="mt-2">Loading history...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bootstrap JS -->
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+        <!-- Custom JS -->
+        <script src="/static/app.js"></script>
+    </body>
+</html>

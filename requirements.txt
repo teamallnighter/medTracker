@@ -1,0 +1,18 @@
+# MedTracker Python Dependencies
+# Core web framework
+Flask==2.3.3
+Flask-CORS==4.0.0
+
+# Database and scheduling
+schedule==1.2.0
+
+# Web push notifications (optional - install if you want push notifications)
+pywebpush==1.14.0
+cryptography==41.0.4
+
+# Production WSGI server
+gunicorn==21.2.0
+
+# Development dependencies (optional)
+pytest==7.4.2
+requests==2.31.0

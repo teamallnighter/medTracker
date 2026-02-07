@@ -1,0 +1,36 @@
+[Unit]
+Description=MedTracker NFC Medication Monitor
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/medTracker
+Environment=PATH=/home/pi/medTracker/venv/bin:/usr/local/bin:/usr/bin:/bin
+Environment=MEDTRACKER_TOKEN=your_secure_token_here
+Environment=VAPID_PRIVATE_KEY=your_vapid_private_key_here
+Environment=VAPID_PUBLIC_KEY=your_vapid_public_key_here
+ExecStart=/home/pi/medTracker/venv/bin/python /home/pi/medTracker/server/app.py
+ExecStop=/bin/kill -TERM $MAINPID
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=medtracker
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/home/pi/medTracker
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target
