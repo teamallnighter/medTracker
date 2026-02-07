@@ -64,8 +64,16 @@ fi
 
 # Copy files to Pi home directory
 echo -e "${GREEN}📋 Step 4: Setting up project files${NC}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+echo "📂 Source directory: $SCRIPT_DIR"
+
+# Create project directory
 mkdir -p "$PROJECT_DIR"
-cp -r ./* "$PROJECT_DIR/" 2>/dev/null || true
+
+# Copy all files except .git and existing venv
+echo "📁 Copying files to $PROJECT_DIR..."
+rsync -av --exclude='.git' --exclude='venv' --exclude='*.pyc' --exclude='__pycache__' "$SCRIPT_DIR/" "$PROJECT_DIR/"
+
 cd "$PROJECT_DIR"
 
 echo -e "${GREEN}📋 Step 5: Creating Python virtual environment${NC}"
