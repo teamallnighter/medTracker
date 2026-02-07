@@ -48,13 +48,29 @@ echo -e "${GREEN}📋 Step 2: Installing Python and system dependencies${NC}"
 sudo apt install -y python3 python3-pip python3-venv git sqlite3
 
 echo -e "${GREEN}📋 Step 3: Creating project directory${NC}"
+
+# Get the absolute path of the script directory FIRST, before any changes
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+echo "📂 Source directory: $SCRIPT_DIR"
+
 PROJECT_DIR="$USER_HOME/medTracker"
 echo "📁 Installing to: $PROJECT_DIR"
+
+# If we're running the script from inside the target directory, we need to handle it carefully
+if [[ "$SCRIPT_DIR" == "$PROJECT_DIR"* ]]; then
+    echo "⚠️  Running setup from target directory - using special handling"
+    TEMP_SOURCE="/tmp/medtracker_source_$$"
+    cp -r "$SCRIPT_DIR" "$TEMP_SOURCE"
+    SCRIPT_DIR="$TEMP_SOURCE"
+fi
+
 if [ -d "$PROJECT_DIR" ]; then
     echo -e "${YELLOW}⚠️  MedTracker directory already exists${NC}"
     read -p "Remove existing installation? (y/N): " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
+        # Change to home directory before removing target
+        cd "$USER_HOME"
         rm -rf "$PROJECT_DIR"
     else
         echo "Installation cancelled."
@@ -64,8 +80,6 @@ fi
 
 # Copy files to Pi home directory
 echo -e "${GREEN}📋 Step 4: Setting up project files${NC}"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-echo "📂 Source directory: $SCRIPT_DIR"
 
 # Create project directory
 mkdir -p "$PROJECT_DIR"
@@ -73,6 +87,11 @@ mkdir -p "$PROJECT_DIR"
 # Copy all files except .git and existing venv
 echo "📁 Copying files to $PROJECT_DIR..."
 rsync -av --exclude='.git' --exclude='venv' --exclude='*.pyc' --exclude='__pycache__' "$SCRIPT_DIR/" "$PROJECT_DIR/"
+
+# Clean up temp directory if we created one
+if [[ "$SCRIPT_DIR" == "/tmp/medtracker_source_"* ]]; then
+    rm -rf "$SCRIPT_DIR"
+fi
 
 cd "$PROJECT_DIR"
 
