@@ -215,6 +215,13 @@ sudo cp scripts/medtracker.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable medtracker.service
 
+# Fix permissions for systemd service access
+echo "🔒 Setting up proper permissions for systemd..."
+sudo chmod 755 "$USER_HOME"
+chmod 755 "$PROJECT_DIR"
+chmod -R 755 "$PROJECT_DIR"
+sudo chown -R "$CURRENT_USER:$CURRENT_USER" "$PROJECT_DIR"
+
 # Test the service configuration without full startup
 echo "🧪 Testing service configuration..."
 sudo systemd-analyze verify /etc/systemd/system/medtracker.service || {

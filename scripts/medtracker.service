@@ -4,7 +4,7 @@ After=network.target
 Wants=network-online.target
 
 [Service]
-Type=exec
+Type=simple
 User=pi
 Group=pi
 WorkingDirectory=/home/pi/medTracker
@@ -12,9 +12,7 @@ Environment=PATH=/home/pi/medTracker/venv/bin:/usr/local/bin:/usr/bin:/bin
 Environment=MEDTRACKER_TOKEN=your_secure_token_here
 Environment=VAPID_PRIVATE_KEY=your_vapid_private_key_here
 Environment=VAPID_PUBLIC_KEY=your_vapid_public_key_here
-ExecStartPre=/bin/bash -c 'test -f /home/pi/medTracker/venv/bin/python3 || (echo "Python venv missing" && exit 1)'
 ExecStart=/home/pi/medTracker/venv/bin/python3 /home/pi/medTracker/server/app.py
-ExecStop=/bin/kill -TERM $MAINPID
 Restart=always
 RestartSec=10
 StandardOutput=journal
@@ -25,7 +23,7 @@ SyslogIdentifier=medtracker
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
-ProtectHome=true
+ProtectHome=false
 ReadWritePaths=/home/pi/medTracker
 ProtectKernelTunables=true
 ProtectKernelModules=true
